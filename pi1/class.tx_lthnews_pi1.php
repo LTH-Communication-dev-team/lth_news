@@ -50,14 +50,21 @@ class tx_lthnews_pi1 extends tslib_pibase {
 	$this->pi_setPiVarDefaults();
 	$this->pi_loadLL();
 	
+	$this->pi_initPIflexForm();
+        $piFlexForm = $this->cObj->data["pi_flexform"];
+        $index = $GLOBALS["TSFE"]->sys_language_uid;
+        $sDef = current($piFlexForm["data"]);       
+        $lDef = array_keys($sDef);
+        $storage = $this->pi_getFFvalue($piFlexForm, "storage", "sDEF", $lDef[$index]);
+	
 	$GLOBALS["TSFE"]->additionalHeaderData["lth_news_js"] = "<script language=\"JavaScript\" type=\"text/javascript\" src=\"/typo3conf/ext/lth_news/res/lth_news.js\"></script>"; 
 
 	$content = '';
 
 	$pid = intval($GLOBALS['TSFE']->id);
 
-	if($pid) {
-	    $resultDocuments = $this->getSolrData($pid);
+	if($pid or $storage) {
+	    $resultDocuments = $this->getSolrData($pid, $storage);
 	    if($resultDocuments) {
 		$content = $this->newsList($resultDocuments);
 	    }
@@ -134,12 +141,16 @@ class tx_lthnews_pi1 extends tslib_pibase {
 	return $content;
     }
 
-    function getSolrData($pid)
+    function getSolrData($pid, $storage)
     {
 	$scheme = 'http';
 	$host = 'www2.lth.se';
 	$port = '8080';
 	$path = '/solr/typo3_sv/';
+	
+	if($storage) {
+	    $pid = $storage;
+	}
 
 	$solrConnection = t3lib_div::makeInstance('tx_solr_ConnectionManager')->getConnection($host, $port, $path, $scheme);
 	if($solrConnection) {
@@ -149,7 +160,7 @@ class tx_lthnews_pi1 extends tslib_pibase {
 	    //$query->useRawQueryString('true');
 	    $query->addFilter("pid:$pid");
 	    $query->setSorting('sorting_intS ASC');
-	    $search->search($query);
+	    $search->search($query, 0, 100000);
 
 	    $resultDocuments = $search->getResultDocuments();
 
